@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>TapSwap Clone (Crypto Theme)</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        /* --- NEW THEME & LAYOUT --- *//* Basic Reset & Body Styling */
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        -webkit-user-select: none; /* Safari */
+        -ms-user-select: none; /* IE 10+ */
+        user-select: none; /* Standard syntax */
+        -webkit-touch-callout: none; /* Disable callout on long press (iOS) */
+        -webkit-tap-highlight-color: transparent; /* Remove tap highlight */
+    }
+
+    html, body {
+        height: 100%;
+        overflow: hidden; /* Prevent scrolling bounce */
+        background-color: #1c1c1e; /* Dark background */
+        color: #e0e0e0; /* Light grey text */
+    }
+
+    /* App Container */
+    #app {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background-color: #1c1c1e; /* Ensure app background */
+    }
+
+    /* Top Bar for Points */
+    #top-bar {
+        padding: 15px 20px;
+        text-align: center;
+        background-color: #2a2a2e; /* Slightly lighter dark */
+        border-bottom: 1px solid #3a3a3c;
+        flex-shrink: 0;
+        position: sticky; /* Keep it visible */
+        top: 0;
+        z-index: 100;
+    }
+
+    #top-points-display {
+        font-size: 28px;
+        font-weight: bold;
+        color: #ffd700; /* Gold color for points */
+        letter-spacing: 1px;
+    }
+
+    /* Main Content Area */
+    #content {
+        flex-grow: 1;
+        overflow-y: auto; /* Allow scrolling within content if needed */
+        padding: 20px;
+        position: relative; /* Needed for absolute positioning of pages */
+    }
+
+    /* Page Styling */
+    .page {
+        display: none; /* Hide all pages initially */
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start; /* Align content top */
+        width: 100%;
+        min-height: 100%; /* Ensure page takes at least full height */
+        padding: 0; /* Padding handled by content area now */
+        animation: fadeIn 0.2s ease-in-out;
+    }
+
+    .page.visible {
+        display: flex; /* Show active page */
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    /* Bottom Navigation */
+    #bottom-nav {
+        display: flex;
+        justify-content: space-around;
+        background-color: #2a2a2e; /* Match top bar */
+        padding: 5px 0 8px 0; /* Adjust padding */
+        border-top: 1px solid #3a3a3c;
+        flex-shrink: 0;
+    }
+
+    #bottom-nav button {
+        background: none;
+        border: none;
+        color: #8e8e93; /* Greyed out color */
+        cursor: pointer;
+        padding: 5px 10px;
+        font-size: 11px; /* Smaller font size */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        transition: color 0.2s ease;
+        flex: 1; /* Make buttons share space */
+        text-align: center;
+    }
+     #bottom-nav button .icon {
+         font-size: 22px; /* Icon size */
+         margin-bottom: 4px;
+     }
+
+    #bottom-nav button.active {
+        color: #ffd700; /* Gold color for active */
+        font-weight: 600;
+    }
+
+    /* Earn (Tap) Page Specific Styles */
+    #earn-page {
+        justify-content: center; /* Center coin vertically */
+        padding-bottom: 80px; /* Space for energy/boost */
+    }
+
+    #coin-container {
+        width: 220px; /* Adjust size */
+        height: 220px;
+        border-radius: 50%;
+        /* background-color: #444; Fallback background */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        margin-bottom: 30px; /* Space before energy/boost */
+        transition: transform 0.1s ease;
+        position: relative; /* For potential overlays */
+         /* Add a subtle shadow maybe */
+         /* box-shadow: 0 0 25px rgba(255, 215, 0, 0.3); */
+         overflow: hidden; /* Hide parts of the image that go beyond the circle if not perfectly round */
+    }
+     #coin-container img {
+         width: 100%;
+         height: 100%;
+         object-fit: contain; /* Use contain if image has text */
+         pointer-events: none;
+         border-radius: 50%; /* Ensure image is round */
+     }
+
+    #coin-container:active {
+        transform: scale(0.96);
+    }
+
+    /* Energy & Boost Row */
+    #earn-controls {
+        display: flex;
+        justify-content: space-between; /* Space out energy and boost */
+        align-items: center;
+        width: 85%;
+        max-width: 350px;
+        margin-top: 20px; /* Space below coin */
+         /* background: rgba(0,0,0,0.1); */
+         padding: 10px 15px;
+         border-radius: 12px;
+    }
+
+    #energy-display {
+        display: flex;
+        align-items: center;
+        color: #fff;
+        font-size: 18px;
+        font-weight: 500;
+    }
+     #energy-display .icon {
+         font-size: 22px;
+         margin-right: 8px;
+         color: #ffd700; /* Gold lightning */
+     }
+
+    #boost-button {
+        display: flex;
+        align-items: center;
+        background-color: #3a3a3c; /* Dark button background */
+        color: #ffd700; /* Gold text */
+        border: none;
+        padding: 8px 15px;
+        border-radius: 20px; /* Pill shape */
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: background-color 0.2s ease;
+    }
+     #boost-button .icon {
+         font-size: 18px;
+         margin-right: 6px;
+     }
+     #boost-button:hover {
+         background-color: #4a4a4c;
+     }
+     #boost-button:active {
+         transform: scale(0.98);
+     }
+
+     /* Tap Effect (Floating Points) */
+     .tap-effect {
+         position: absolute;
+         font-size: 24px;
+         font-weight: bold;
+         color: #ffd700; /* Gold points */
+         opacity: 1;
+         animation: floatUp 1s ease-out forwards;
+         pointer-events: none;
+         text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+         z-index: 10;
+     }
+    @keyframes floatUp {
+         0% { transform: translateY(0); opacity: 1; }
+         100% { transform: translateY(-70px); opacity: 0; }
+    }
+
+
+    /* Account (Profile) Page Specific Styles */
+    #account-page h2 {
+        color: #ffd700; /* Gold heading */
+        margin-bottom: 25px;
+         margin-top: 10px;
+    }
+    #profile-info,
+    #withdraw-section {
+        background-color: #2a2a2e; /* Dark element background */
+        padding: 20px;
+        border-radius: 10px;
+        width: 90%;
+        max-width: 400px;
+        text-align: left;
+        margin-bottom: 20px;
+         border: 1px solid #3a3a3c;
+    }
+    #profile-info p {
+        margin-bottom: 14px;
+        font-size: 16px;
+        color: #c7c7cc; /* Lighter grey text */
+    }
+     #profile-info p strong {
+         color: #fff; /* White label */
+         margin-right: 8px;
+         font-weight: 600;
+     }
+
+     #withdraw-section h3 {
+         color: #ffd700;
+         margin-bottom: 15px;
+         font-size: 20px;
+     }
+
+     #withdraw-button {
+         display: block; /* Make button full width of its container */
+         width: 100%;
+         background-color: #28a745; /* Green for action */
+         color: #fff;
+         border: none;
+         padding: 12px 20px;
+         border-radius: 8px;
+         cursor: pointer;
+         font-size: 16px;
+         font-weight: 600;
+         text-align: center;
+         transition: background-color 0.2s ease, transform 0.1s ease;
+     }
+     #withdraw-button:hover:not(:disabled) {
+         background-color: #218838; /* Darker green */
+     }
+     #withdraw-button:active:not(:disabled) {
+          transform: scale(0.98);
+     }
+      #withdraw-button:disabled {
+          background-color: #4a4a4c;
+          color: #8e8e93;
+          cursor: not-allowed;
+          opacity: 0.8;
+      }
+
+
+    /* Task Page Specific Styles */
+    #task-page h2 {
+         color: #ffd700; /* Gold heading */
+         margin-bottom: 20px;
+         margin-top: 10px;
+     }
+    .task-list {
+        width: 95%; /* Make slightly wider */
+        max-width: 550px;
+    }
+    .task-item {
+        background-color: #2a2a2e;
+        padding: 15px 20px; /* Adjust padding */
+        border-radius: 12px; /* More rounded */
+        margin-bottom: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border: 1px solid #3a3a3c;
+    }
+     .task-item p {
+         margin-right: 15px;
+         flex-grow: 1;
+         word-break: break-word;
+         color: #e0e0e0; /* Match default text */
+         font-size: 15px;
+     }
+     .task-item p span { /* Style reward points */
+         color: #ffd700;
+         font-weight: 500;
+         display: block; /* Put reward on new line */
+         font-size: 13px;
+         margin-top: 4px;
+     }
+    .task-item button {
+        background-color: #ffd700; /* Gold button */
+        color: #1c1c1e; /* Dark text on gold button */
+        border: none;
+        padding: 8px 18px; /* Adjust padding */
+        border-radius: 20px; /* Pill shape */
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 700;
+        transition: background-color 0.2s ease, transform 0.1s ease;
+        flex-shrink: 0;
+    }
+    .task-item button:hover:not(:disabled) {
+        background-color: #e6c300; /* Darker gold on hover */
+    }
+    .task-item button:active:not(:disabled) {
+         transform: scale(0.97);
+    }
+     .task-item button:disabled {
+         background-color: #4a4a4c; /* Dark grey disabled */
+         color: #8e8e93;
+         cursor: not-allowed;
+         opacity: 0.8;
+     }
+
+     /* Drop Page Specific Styles */
+      #drop-page h2 {
+         color: #ffd700; /* Gold heading */
+         margin-bottom: 20px;
+         margin-top: 10px;
+      }
+      #drop-page p {
+          font-size: 16px;
+          color: #8e8e93;
+      }
+
+     /* Utility classes */
+     .text-center { text-align: center; }
+     .mb-3 { margin-bottom: 1rem; }
+     .mt-3 { margin-top: 1rem; }
+
+</style>
+
+</head>
+<body>
+    <div id="app">
+        <div id="top-bar">
+            <span id="top-points-display">0</span>
+        </div><main id="content">
+        <div id="account-page" class="page">
+            <h2>Account</h2>
+            <div id="profile-info">
+                <p><strong>Name:</strong> <span id="profile-name">Loading...</span></p>
+                <p><strong>Balance:</strong> <span id="profile-points">0</span></p> <p><strong>Joined:</strong> <span id="profile-join-date">Unknown</span></p>
+                <p><strong>Referral Link:</strong> <span id="profile-referral">Not Implemented</span></p>
+            </div>
+
+             <div id="withdraw-section">
+                <h3>Withdraw Points</h3>
+                <p class="mb-3" style="color: #c7c7cc; font-size: 14px;">Withdrawal functionality is simulated on the client-side for this demo. Minimum withdrawal is 100,000 points.</p>
+                <button id="withdraw-button">Withdraw All Available Points</button>
+            </div>
+             </div>
+
+        <div id="earn-page" class="page visible"> <div id="coin-container">
+                <img src="kkr.png" alt="Tap Image">
+                 </div>
+             <div id="earn-controls">
+                 <div id="energy-display">
+                     <span class="icon">⚡️</span>
+                     <span id="energy-text">500/500</span>
+                 </div>
+                 <button id="boost-button">
+                     <span class="icon">🔥</span>
+                     Boost
+                 </button>
+             </div>
+        </div>
+
+        <div id="task-page" class="page">
+            <h2>Tasks</h2>
+            <div class="task-list" id="task-list-container">
+                <p>Loading tasks...</p>
+            </div>
+        </div>
+
+        <div id="drop-page" class="page">
+             <h2>Drop</h2>
+             <p class="mt-3">Special drops coming soon!</p>
+             </div>
+
+    </main>
+
+    <nav id="bottom-nav">
+        <button data-page="earn-page" class="active"><span class="icon">💰</span>Earn</button>
+        <button data-page="task-page"><span class="icon">✅</span>Tasks</button>
+        <button data-page="account-page"><span class="icon">👤</span>Account</button>
+        <button data-page="drop-page"><span class="icon">🎁</span>Drop</button>
+    </nav>
+</div>
+
+<script>
+    // --- Telegram Web App Integration ---
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+
+    // --- Game State & Config ---
+    const MAX_ENERGY = 500; // Match image
+    const ENERGY_REFILL_RATE_PER_SECOND = 2; // Example refill rate
+    const ENERGY_PER_TAP = 1; // Example energy cost per tap
+    const POINTS_PER_TAP = 1; // Example points gained per tap
+    const REFILL_INTERVAL_MS = 1000;
+    const SAVE_INTERVAL_MS = 5000;
+    const TASK_REWARD = 1000;
+    const MIN_WITHDRAW_POINTS = 100000; // Minimum points for withdrawal
+
+    let state = {
+        points: 0,
+        energy: MAX_ENERGY,
+        lastEnergyUpdate: Date.now(),
+        joinDate: null,
+        telegramUser: null,
+        tasks: [ // Keep tasks from previous step
+            { id: 'task1', text: 'Join Movies Channel', reward: TASK_REWARD, completed: false, url: 'https://t.me/freemovieslight' },
+            { id: 'task2', text: 'Join Anime Channel', reward: TASK_REWARD, completed: false, url: 'https://t.me/freeanimelight' },
+            { id: 'task3', text: 'Chat Support (Movies)', reward: TASK_REWARD, completed: false, url: 'https://t.me/chgtmovie' },
+            { id: 'task4', text: 'Visit AI Tools Website', reward: TASK_REWARD, completed: false, url: 'https://hicrazy5.wordpress.com' }
+        ],
+        completedTaskIds: []
+    };
+
+    // --- DOM Elements ---
+    const appEl = document.getElementById('app'); // Need app element for tap effect positioning sometimes
+    const contentEl = document.getElementById('content');
+    const pages = document.querySelectorAll('.page');
+    const navButtons = document.querySelectorAll('#bottom-nav button');
+
+    // Top Bar
+    const topPointsDisplay = document.getElementById('top-points-display');
+
+    // Earn Page
+    const coinContainer = document.getElementById('coin-container');
+    const energyText = document.getElementById('energy-text'); // Inside #energy-display
+    const boostButton = document.getElementById('boost-button');
+
+    // Account Page
+    const profilePointsDisplay = document.getElementById('profile-points');
+    const profileNameEl = document.getElementById('profile-name');
+    const profileJoinDateEl = document.getElementById('profile-join-date');
+    const withdrawButton = document.getElementById('withdraw-button'); // Added withdraw button
+
+    // Task Page
+    const taskListContainer = document.getElementById('task-list-container');
+
+
+    // --- Core Functions ---
+
+    function loadState() {
+        console.log("Attempting to load state...");
+        const savedState = localStorage.getItem('tapSwapCloneData_v2'); // Use new key for new structure
+        const now = Date.now();
+        if (savedState) {
+            try {
+                const loaded = JSON.parse(savedState);
+                console.log("Loaded state:", loaded);
+                state.points = loaded.points || 0;
+                state.energy = loaded.energy !== undefined ? loaded.energy : MAX_ENERGY;
+                state.lastEnergyUpdate = loaded.lastEnergyUpdate || now;
+                state.joinDate = loaded.joinDate || now;
+                state.completedTaskIds = loaded.completedTaskIds || [];
+
+                // Sync task completion status
+                state.tasks.forEach(task => {
+                    task.completed = state.completedTaskIds.includes(task.id);
+                });
+
+                // Recalculate energy
+                const timePassedSeconds = Math.floor((now - state.lastEnergyUpdate) / 1000);
+                if (timePassedSeconds > 0) {
+                    const energyToRefill = timePassedSeconds * ENERGY_REFILL_RATE_PER_SECOND;
+                    const prevEnergy = state.energy;
+                    state.energy = Math.min(MAX_ENERGY, state.energy + energyToRefill);
+                     // Only update UI if energy actually changed
+                     if (state.energy !== prevEnergy) {
+                         updateUI();
+                     }
+                    state.lastEnergyUpdate = now; // Update timestamp regardless
+                } else if (state.energy >= MAX_ENERGY) {
+                     // If energy is full, keep updating the timestamp so refill calculation is correct when energy drops
+                     state.lastEnergyUpdate = now;
+                }
+
+            } catch (error) {
+                console.error("Failed to parse saved state:", error);
+                // Initialize with defaults if parsing fails
+                state.joinDate = now;
+                state.lastEnergyUpdate = now;
+                state.completedTaskIds = [];
+                state.tasks.forEach(task => task.completed = false);
+                saveState(); // Save the initial default state
+            }
+        } else {
+            console.log("No saved state found (v2), initializing defaults.");
+            state.joinDate = now;
+            state.lastEnergyUpdate = now;
+            saveState(); // Save the initial state immediately
+        }
+         // Load Telegram user data
+         if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+             state.telegramUser = tg.initDataUnsafe.user;
+             console.log("Telegram User Data:", state.telegramUser);
+         } else {
+             console.warn("Running outside Telegram or user data unavailable.");
+             state.telegramUser = { first_name: "User", last_name: "", username: "guest" }; // Fallback
+         }
+    }
+
+    function saveState() {
+        // console.log("Saving state..."); // Less verbose logging
+        state.lastEnergyUpdate = Date.now();
+        state.completedTaskIds = state.tasks.filter(t => t.completed).map(t => t.id);
+
+        const stateToSave = {
+            points: state.points,
+            energy: state.energy,
+            lastEnergyUpdate: state.lastEnergyUpdate,
+            joinDate: state.joinDate,
+            completedTaskIds: state.completedTaskIds
+        };
+        try {
+            localStorage.setItem('tapSwapCloneData_v2', JSON.stringify(stateToSave));
+             // console.log("State saved.");
+        } catch (error) {
+            console.error("Failed to save state:", error);
+        }
+    }
+
+    function formatPoints(points) {
+        // Simple formatting, you might want more complex logic for BTC display
+        // For now, just show points, maybe add " PTS" suffix? Or use Intl.NumberFormat
+        return Math.floor(points).toLocaleString(); // Add commas
+    }
+
+    function updateUI() {
+        // Update TOP BAR points display
+        topPointsDisplay.textContent = formatPoints(state.points); // Always visible points
+
+        // Update energy display
+        energyText.textContent = `${Math.floor(state.energy)}/${MAX_ENERGY}`;
+
+         // Update Account (Profile) Page points and details (only if page is potentially visible)
+         profilePointsDisplay.textContent = formatPoints(state.points);
+         if (state.telegramUser) {
+             profileNameEl.textContent = `${state.telegramUser.first_name || ''} ${state.telegramUser.last_name || ''} (@${state.telegramUser.username || 'N/A'})`;
+         } else {
+              profileNameEl.textContent = "Guest";
+         }
+         profileJoinDateEl.textContent = state.joinDate ? new Date(state.joinDate).toLocaleDateString() : 'Unknown';
+
+         // Enable/Disable withdraw button
+         if (state.points >= MIN_WITHDRAW_POINTS) {
+             withdrawButton.disabled = false;
+             withdrawButton.textContent = `Withdraw ${formatPoints(state.points)} Points`;
+             withdrawButton.style.backgroundColor = '#28a745'; // Active green
+         } else {
+             withdrawButton.disabled = true;
+              withdrawButton.textContent = `Need ${formatPoints(MIN_WITHDRAW_POINTS)} Points to Withdraw`;
+              withdrawButton.style.backgroundColor = '#4a4a4c'; // Disabled grey
+         }
+
+
+         // Note: Task rendering is handled separately when switching to the task page
+    }
+
+     function renderTasks() {
+         taskListContainer.innerHTML = ''; // Clear previous tasks
+         if (state.tasks.length === 0) {
+             taskListContainer.innerHTML = '<p>No tasks available right now.</p>';
+             return;
+         }
+         state.tasks.forEach(task => {
+             task.completed = state.completedTaskIds.includes(task.id); // Ensure sync
+
+             const taskItem = document.createElement('div');
+             taskItem.classList.add('task-item');
+             // Updated HTML structure for tasks to include reward span
+             taskItem.innerHTML = `
+                 <p>${task.text} <span>+${task.reward} points</span></p>
+                 <button class="task-complete-button" data-task-id="${task.id}" ${task.completed ? 'disabled' : ''}>
+                     ${task.completed ? 'Claimed' : 'Go'}
+                 </button>
+             `;
+             taskListContainer.appendChild(taskItem);
+
+             const button = taskItem.querySelector('.task-complete-button');
+             if (!task.completed) {
+                // Re-add listener to avoid potential duplicates after re-rendering
+                 button.onclick = () => handleTaskClick(task.id, task.url);
+             }
+         });
+     }
+
+    function switchPage(pageId) {
+        console.log("Switching to page:", pageId);
+        pages.forEach(page => {
+            page.classList.remove('visible');
+            if (page.id === pageId) {
+                page.classList.add('visible');
+            }
+        });
+        navButtons.forEach(button => {
+            button.classList.remove('active');
+            if (button.dataset.page === pageId) {
+                button.classList.add('active');
+            }
+        });
+        contentEl.scrollTop = 0; // Scroll to top
+
+         // Re-render tasks ONLY when switching to the task page
+         if (pageId === 'task-page') {
+             renderTasks();
+         }
+         // Update account details and withdraw button status when switching to account page
+         if (pageId === 'account-page') {
+              updateUI(); // Updates points and user details shown there, and checks withdraw state
+         }
+    }
+
+    function handleTap(event) {
+        if (state.energy >= ENERGY_PER_TAP) {
+            state.energy -= ENERGY_PER_TAP;
+            state.points += POINTS_PER_TAP;
+
+             // Create and position the tap effect
+             const tapEffect = document.createElement('div');
+             tapEffect.classList.add('tap-effect');
+             tapEffect.textContent = `+${POINTS_PER_TAP}`;
+
+             // Get click position relative to the viewport
+             const clickX = event.clientX || (event.touches && event.touches[0].clientX);
+             const clickY = event.clientY || (event.touches && event.touches[0].clientY);
+
+             if (clickX !== undefined && clickY !== undefined) {
+                 // Position absolute relative to the viewport initially
+                 tapEffect.style.position = 'fixed'; // Use fixed to position relative to viewport
+                 tapEffect.style.left = `${clickX}px`;
+                 tapEffect.style.top = `${clickY}px`;
+                 // Adjust so the number appears centered on the click point
+                 tapEffect.style.transform = 'translate(-50%, -50%)';
+             } else {
+                 // Fallback if coordinates aren't available (less likely)
+                 const rect = coinContainer.getBoundingClientRect();
+                 tapEffect.style.position = 'absolute'; // Fallback to absolute within content
+                 tapEffect.style.left = `${rect.left + rect.width / 2}px`;
+                 tapEffect.style.top = `${rect.top + rect.height / 2}px`;
+                 tapEffect.style.transform = 'translate(-50%, -50%)';
+             }
+
+             // Append to the main app container to ensure it's above everything
+             appEl.appendChild(tapEffect);
+
+
+             tapEffect.addEventListener('animationend', () => {
+                 if (tapEffect.parentNode) { // Check if it hasn't already been removed
+                     tapEffect.remove();
+                 }
+             });
+
+             if (navigator.vibrate) {
+                 navigator.vibrate(30); // Shorter vibration
+             }
+
+            updateUI(); // Update points and energy bar display
+        } else {
+             console.log("Not enough energy!");
+             // Maybe flash the energy bar red briefly?
+             const energyIcon = document.querySelector('#energy-display .icon');
+             if (energyIcon) {
+                 energyIcon.style.color = '#ff453a'; // iOS red
+                 setTimeout(() => { energyIcon.style.color = '#ffd700'; }, 200);
+             }
+        }
+    }
+
+     function handleTaskClick(taskId, taskUrl) {
+         const task = state.tasks.find(t => t.id === taskId);
+         if (!task || task.completed) return;
+
+         console.log(`Task button clicked for: ${taskId}, URL: ${taskUrl}`);
+         const isTelegramLink = taskUrl.startsWith('https://t.me/');
+         const openAction = () => {
+             try {
+                 if (isTelegramLink) {
+                     tg.openTelegramLink(taskUrl);
+                 } else {
+                     tg.openLink(taskUrl);
+                 }
+             } catch (error) {
+                  console.error("Error opening link:", error);
+                  tg.showAlert("Could not open the link.");
+             }
+         };
+
+         tg.showPopup({
+             title: 'Complete Task?',
+             message: `You'll be directed ${isTelegramLink ? 'within Telegram' : 'to an external site'}. Confirm task completion after visiting/joining?`,
+             buttons: [
+                 {id: 'confirm_complete', type: 'default', text: 'Confirm & Go'},
+                 {id: 'go_only', type: 'default', text: 'Just Go'},
+                 {type: 'cancel'},
+             ]
+         }, (buttonId) => {
+             if (buttonId === 'confirm_complete') {
+                 openAction();
+                 // Slight delay before completing to simulate user action
+                 setTimeout(() => completeTask(taskId), 500);
+             } else if (buttonId === 'go_only') {
+                 openAction();
+             } else {
+                 console.log("Task action cancelled.");
+             }
+         });
+     }
+
+     function completeTask(taskId) {
+         const task = state.tasks.find(t => t.id === taskId);
+         if (!task || task.completed) return; // Double check
+
+         console.log(`Completing task: ${taskId}`);
+         state.points += task.reward;
+         task.completed = true;
+         if (!state.completedTaskIds.includes(taskId)) {
+            state.completedTaskIds.push(taskId);
+         }
+
+         renderTasks(); // Re-render tasks on the task page
+         updateUI(); // Update point display globally and withdraw button state
+         saveState(); // Save immediately
+
+         tg.showAlert(`Task "${task.text.split('+')[0].trim()}" completed! +${task.reward} points.`);
+     }
+
+    function refillEnergy() {
+        const now = Date.now();
+         if (typeof state.lastEnergyUpdate !== 'number') {
+             state.lastEnergyUpdate = now;
+         }
+        const timePassedSeconds = Math.floor((now - state.lastEnergyUpdate) / 1000);
+
+        if (timePassedSeconds > 0 && state.energy < MAX_ENERGY) {
+            const energyToRefill = timePassedSeconds * ENERGY_REFILL_RATE_PER_SECOND;
+            const prevEnergy = state.energy;
+            state.energy = Math.min(MAX_ENERGY, state.energy + energyToRefill);
+             // Only update UI if energy actually changed
+             if (state.energy !== prevEnergy) {
+                 updateUI();
+             }
+             state.lastEnergyUpdate = now; // Update timestamp after refill calculation
+        } else if (state.energy >= MAX_ENERGY) {
+             // If energy is full, keep updating the timestamp so refill calculation is correct when energy drops
+             state.lastEnergyUpdate = now;
+        }
+    }
+
+     function handleBoostClick() {
+         console.log("Boost button clicked!");
+         // Placeholder: Show an alert or implement boost logic
+         tg.showAlert("Boost feature coming soon!");
+         // Example: Temporarily increase points per tap or energy refill rate
+         // You would need to add state variables to track boost status/duration
+     }
+
+     // --- Withdraw Functionality ---
+     function handleWithdrawClick() {
+         if (state.points < MIN_WITHDRAW_POINTS) {
+             tg.showAlert(`You need at least ${formatPoints(MIN_WITHDRAW_POINTS)} points to withdraw.`);
+             return;
+         }
+
+         tg.showPopup({
+             title: 'Confirm Withdrawal',
+             message: `Are you sure you want to withdraw ${formatPoints(state.points)} points? This is a simulated withdrawal for demonstration purposes.`,
+             buttons: [
+                 {id: 'confirm_withdraw', type: 'destructive', text: 'Yes, Withdraw'}, // Use destructive type for clarity
+                 {type: 'cancel'},
+             ]
+         }, (buttonId) => {
+             if (buttonId === 'confirm_withdraw') {
+                 simulateWithdrawal(state.points);
+             } else {
+                 console.log("Withdrawal cancelled.");
+             }
+         });
+     }
+
+     function simulateWithdrawal(amount) {
+         console.log(`Simulating withdrawal of ${amount} points.`);
+         if (amount > 0) {
+             const withdrawnAmount = amount; // Withdraw all
+             state.points -= withdrawnAmount; // Deduct points
+             state.points = Math.max(0, state.points); // Ensure points don't go below zero
+
+             updateUI(); // Update point display and withdraw button state
+             saveState(); // Save immediately
+
+             tg.showAlert(`Successfully simulated withdrawal of ${formatPoints(withdrawnAmount)} points! Your new balance is ${formatPoints(state.points)}.`);
+         } else {
+             tg.showAlert("No points to withdraw.");
+         }
+     }
+
+
+    // --- Initialization ---
+    function initApp() {
+        console.log("Initializing App (Crypto Theme)...");
+        loadState();
+
+        // Set up navigation
+        navButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                switchPage(button.dataset.page);
+            });
+        });
+
+        // Set up tap listener
+        coinContainer.addEventListener('click', handleTap);
+         coinContainer.addEventListener('touchstart', (e) => {
+             e.preventDefault();
+             handleTap(e.touches[0] || e);
+         }, { passive: false });
+
+        // Set up boost listener
+        boostButton.addEventListener('click', handleBoostClick);
+
+        // Set up withdraw listener
+        withdrawButton.addEventListener('click', handleWithdrawClick); // Added listener
+
+        // Start energy refill loop
+        setInterval(refillEnergy, REFILL_INTERVAL_MS);
+
+         // Start auto-save loop
+         setInterval(saveState, SAVE_INTERVAL_MS);
+
+         // Initial UI setup
+         updateUI();
+         switchPage('earn-page'); // Start on Earn page
+
+         tg.ready();
+         console.log("App Initialized.");
+    }
+
+    // --- Run ---
+    document.addEventListener('DOMContentLoaded', initApp);
+
+</script>
+
+</body>
+</html>

@@ -430,6 +430,7 @@
     const SAVE_INTERVAL_MS = 5000;
     const TASK_REWARD = 1000;
     const MIN_WITHDRAW_POINTS = 100000; // Minimum points for withdrawal
+    const TASK_RESET_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
     let state = {
         points: 0,
@@ -443,7 +444,8 @@
             { id: 'task3', text: 'Chat Support (Movies)', reward: TASK_REWARD, completed: false, url: 'https://t.me/chgtmovie' },
             { id: 'task4', text: 'Visit AI Tools Website', reward: TASK_REWARD, completed: false, url: 'https://hicrazy5.wordpress.com' }
         ],
-        completedTaskIds: []
+        completedTaskIds: [],
+        lastTaskResetTime: Date.now() // Added timestamp for task reset
     };
 
     // --- DOM Elements ---
@@ -485,6 +487,7 @@
                 state.lastEnergyUpdate = loaded.lastEnergyUpdate || now;
                 state.joinDate = loaded.joinDate || now;
                 state.completedTaskIds = loaded.completedTaskIds || [];
+                state.lastTaskResetTime = loaded.lastTaskResetTime || now; // Load last task reset time
 
                 // Sync task completion status
                 state.tasks.forEach(task => {
@@ -514,14 +517,17 @@
                 state.lastEnergyUpdate = now;
                 state.completedTaskIds = [];
                 state.tasks.forEach(task => task.completed = false);
+                state.lastTaskResetTime = now; // Initialize task reset time on error
                 saveState(); // Save the initial default state
             }
         } else {
             console.log("No saved state found (v2), initializing defaults.");
             state.joinDate = now;
             state.lastEnergyUpdate = now;
+            state.lastTaskResetTime = now; // Initialize task reset time for new user
             saveState(); // Save the initial state immediately
         }
+
          // Load Telegram user data
          if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
              state.telegramUser = tg.initDataUnsafe.user;
@@ -530,6 +536,9 @@
              console.warn("Running outside Telegram or user data unavailable.");
              state.telegramUser = { first_name: "User", last_name: "", username: "guest" }; // Fallback
          }
+
+         // Check and reset tasks after loading state
+         checkAndResetTasks();
     }
 
     function saveState() {
@@ -542,7 +551,8 @@
             energy: state.energy,
             lastEnergyUpdate: state.lastEnergyUpdate,
             joinDate: state.joinDate,
-            completedTaskIds: state.completedTaskIds
+            completedTaskIds: state.completedTaskIds,
+            lastTaskResetTime: state.lastTaskResetTime // Save last task reset time
         };
         try {
             localStorage.setItem('tapSwapCloneData_v2', JSON.stringify(stateToSave));
@@ -596,7 +606,8 @@
              return;
          }
          state.tasks.forEach(task => {
-             task.completed = state.completedTaskIds.includes(task.id); // Ensure sync
+             // Ensure task.completed status is in sync with completedTaskIds for rendering
+             task.completed = state.completedTaskIds.includes(task.id);
 
              const taskItem = document.createElement('div');
              taskItem.classList.add('task-item');
@@ -635,6 +646,7 @@
 
          // Re-render tasks ONLY when switching to the task page
          if (pageId === 'task-page') {
+             checkAndResetTasks(); // Check for reset before rendering tasks
              renderTasks();
          }
          // Update account details and withdraw button status when switching to account page
@@ -746,11 +758,14 @@
          console.log(`Completing task: ${taskId}`);
          state.points += task.reward;
          task.completed = true;
+         // Add task ID to completed list if not already there
          if (!state.completedTaskIds.includes(taskId)) {
             state.completedTaskIds.push(taskId);
          }
 
-         renderTasks(); // Re-render tasks on the task page
+         // Note: lastTaskResetTime is updated only when a full reset occurs, not on individual task completion.
+
+         renderTasks(); // Re-render tasks on the task page to update button state
          updateUI(); // Update point display globally and withdraw button state
          saveState(); // Save immediately
 
@@ -826,11 +841,45 @@
          }
      }
 
+     // --- Task Reset Logic ---
+     function checkAndResetTasks() {
+         const now = Date.now();
+         // Ensure lastTaskResetTime is a number, default to now if not
+         if (typeof state.lastTaskResetTime !== 'number') {
+             state.lastTaskResetTime = now;
+             saveState(); // Save immediately if initialized
+             return; // No reset needed if just initialized
+         }
+
+         const elapsedTime = now - state.lastTaskResetTime;
+
+         if (elapsedTime >= TASK_RESET_INTERVAL_MS) {
+             console.log("24 hours passed, resetting tasks.");
+             state.completedTaskIds = [];
+             state.tasks.forEach(task => {
+                 task.completed = false; // Explicitly mark tasks as not completed
+             });
+             state.lastTaskResetTime = now; // Update reset timestamp
+             saveState(); // Save the reset state
+             // Optionally notify the user if they are on the task page when it resets
+             if (document.getElementById('task-page').classList.contains('visible')) {
+                  tg.showAlert("Daily tasks have been reset!");
+             }
+         } else {
+             console.log(`Tasks will reset in: ${Math.ceil((TASK_RESET_INTERVAL_MS - elapsedTime) / (1000 * 60))} minutes`);
+             // Ensure UI reflects current completed state based on loaded data
+              state.tasks.forEach(task => {
+                 task.completed = state.completedTaskIds.includes(task.id);
+             });
+         }
+         renderTasks(); // Always render tasks after checking reset state
+     }
+
 
     // --- Initialization ---
     function initApp() {
         console.log("Initializing App (Crypto Theme)...");
-        loadState();
+        loadState(); // loadState now calls checkAndResetTasks
 
         // Set up navigation
         navButtons.forEach(button => {
